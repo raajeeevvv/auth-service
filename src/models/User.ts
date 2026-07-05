@@ -9,6 +9,8 @@ export interface IUser extends Document {
   isVerified: Boolean;
   verifyEmailTokenHash?: string;
   verifyEmailExpires?: Date;
+  failedLoginAttempts?: number;
+  lockUntil?: Date;
 }
 
 const userSchema = new Schema<IUser>(
@@ -37,6 +39,8 @@ const userSchema = new Schema<IUser>(
     isVerified: { type: Boolean, default: false },
     verifyEmailTokenHash: { type: String },
     verifyEmailExpires: { type: Date },
+    failedLoginAttempts: { type: Number, default: 0 },
+    lockUntil: { type: Date },
   },
   { timestamps: true },
 );

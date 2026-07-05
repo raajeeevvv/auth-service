@@ -19,24 +19,40 @@ export async function authControllerLogin(req: Request, res: Response) {
     const isUserExist = await User.findOne({
       email: email,
     });
+
     if (isUserExist == null) {
       return res.status(401).json({
         message: "Invalid credentials",
       });
-    }
-    const isPasswordCorrect = await bcrypt.compare(
-      password,
-      isUserExist.password,
-    );
-
-    if (!isPasswordCorrect) {
-      return res.status(401).json({ message: "Invalid credentials" });
     }
     if (!isUserExist.isVerified) {
       return res
         .status(403)
         .json({ message: "Please verify your email before logging in" });
     }
+
+    const isLocked = isUserExist.lockUntil;
+    if (isLocked && isLocked > new Date()) {
+      return res.status(403).json({
+        message:
+          "Account is locked due to multiple failed login attempts. Please try again later.",
+      });
+    }
+
+    const isPasswordCorrect = await bcrypt.compare(
+      password,
+      isUserExist.password,
+    );
+
+    if (!isPasswordCorrect) {
+      isUserExist.failedLoginAttempts =
+        (isUserExist.failedLoginAttempts || 0) + 1;
+      if (isUserExist.failedLoginAttempts >= 5) {
+        isUserExist.lockUntil = new Date(Date.now() + 15 * 60 * 1000);
+      }
+      await isUserExist.save();
+      return res.status(401).json({ message: "Invalid credentials" });
+    } 
 
     // making jwt token for auth of everyother request user send to backend
 
@@ -61,8 +77,11 @@ export async function authControllerLogin(req: Request, res: Response) {
         expiresIn: "7d",
       },
     );
+    isUserExist.failedLoginAttempts = 0;
+    isUserExist.lockUntil = undefined;
     isUserExist.refreshToken = refreshToken;
     await isUserExist.save();
+
 
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,

@@ -8,14 +8,16 @@ import { authControllerForgotPassword } from "../controllers/authControllerForgo
 import { authControllerResetPassword } from "../controllers/authControllerResetPassword";
 import { authControllerSendVerification } from "../controllers/authControllerSendVerification";
 import { authControllerVerifyEmail } from "../controllers/authControllerVerifyEmail";
+import { authLimiter, generalLimiter } from "../middleware/rateLimiter";
 
-router.post("/signup", authControllerSignup);
-router.post("/login", authControllerLogin);
-router.post("/logout", authControllerLogout);
-router.post("/refresh", authControllerRefreshToken);
-router.post("/forgot-password", authControllerForgotPassword);
-router.post("/reset-password", authControllerResetPassword);
-router.post("/send-verification", authControllerSendVerification);
-router.post("/verify-email", authControllerVerifyEmail);
+router.post("/login", authLimiter, authControllerLogin);
+router.post("/forgot-password", authLimiter, authControllerForgotPassword);
+router.post("/send-verification", authLimiter, authControllerSendVerification);
+router.post("/signup", authLimiter, authControllerSignup); 
+
+router.post("/logout", generalLimiter, authControllerLogout);
+router.post("/refresh", generalLimiter, authControllerRefreshToken);
+router.post("/reset-password", generalLimiter, authControllerResetPassword);
+router.post("/verify-email", generalLimiter, authControllerVerifyEmail);
 
 export default router;
