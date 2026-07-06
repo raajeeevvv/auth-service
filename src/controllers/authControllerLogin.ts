@@ -38,7 +38,14 @@ export async function authControllerLogin(req: Request, res: Response) {
           "Account is locked due to multiple failed login attempts. Please try again later.",
       });
     }
-
+    if (
+      isUserExist.provider !== "local" ||
+      isUserExist.password === undefined
+    ) {
+      return res.status(400).json({
+        message: "This account uses social login. Please sign in with Google.",
+      });
+    }
     const isPasswordCorrect = await bcrypt.compare(
       password,
       isUserExist.password,
@@ -52,13 +59,17 @@ export async function authControllerLogin(req: Request, res: Response) {
       }
       await isUserExist.save();
       return res.status(401).json({ message: "Invalid credentials" });
-    } 
+    }
 
     // making jwt token for auth of everyother request user send to backend
 
-    const token = jwt.sign({ id: isUserExist.id }, getJwtSecret(), {
-      expiresIn: "15m",
-    });
+    const token = jwt.sign(
+      { email,id: isUserExist.id, role: isUserExist.role },
+      getJwtSecret(),
+      {
+        expiresIn: "15m",
+      },
+    );
 
     // setting token in the cookie so that i automatically being send as the user request the backend
     res.cookie("token", token, {
@@ -71,7 +82,7 @@ export async function authControllerLogin(req: Request, res: Response) {
 
     //refresh token
     const refreshToken = jwt.sign(
-      { email, id: isUserExist.id },
+      { email, id: isUserExist.id, role: isUserExist.role },
       getJwtSecretRefreshToken(),
       {
         expiresIn: "7d",
@@ -81,7 +92,6 @@ export async function authControllerLogin(req: Request, res: Response) {
     isUserExist.lockUntil = undefined;
     isUserExist.refreshToken = refreshToken;
     await isUserExist.save();
-
 
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,

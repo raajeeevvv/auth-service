@@ -28,6 +28,7 @@ export async function authControllerSignup(req: Request, res: Response) {
     const user = await User.create({
       email: email,
       password: hashedPassword,
+      provider:'local'
     });
 
     return res.status(201).json({

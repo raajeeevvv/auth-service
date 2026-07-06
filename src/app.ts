@@ -3,12 +3,15 @@ import cors from "cors";
 import authRoutes from "./routes/authRoutes";
 import cookieParser from "cookie-parser";
 import { authMiddleware } from "./middleware/authMiddleware";
+import passport from "./config/passport";
+
 
 const app = express();
 
 // middleware
 app.use(express.json());
 app.use(cookieParser()); // this is to parse the cookies as express doesn't do it at this own
+app.use(passport.initialize());
 
 // did this for using httponly cookie auth so that i later on don't get the bug that "browser don't send or reveiver cookies"
 // if you want you can learn about this more later on
@@ -20,7 +23,7 @@ app.use(
 );
 
 // health check — fine to keep during dev
-app.get("/", (req: Request, res: Response) => {
+app.get("/health", (req: Request, res: Response) => {
   res.send("Hello World!, This is your backend");
 });
 

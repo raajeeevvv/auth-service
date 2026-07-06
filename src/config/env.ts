@@ -1,3 +1,6 @@
+import dotenv from 'dotenv';
+dotenv.config();
+
 export function getJwtSecret() {
   const JWT_SECRET = process.env.JWT_SECRET;
   if (!JWT_SECRET) {
@@ -19,4 +22,15 @@ export function getSaltRound() {
     throw new Error("SALT_ROUNDS is not defined in .env");
   }
   return SALT_ROUNDS;
+}
+export function getGoogleClientId() {
+  const id = process.env.GOOGLE_CLIENT_ID;
+  if (!id) throw new Error("GOOGLE_CLIENT_ID is not defined in .env");
+  return id;
+}
+
+export function getGoogleClientSecret() {
+  const secret = process.env.GOOGLE_CLIENT_SECRET;
+  if (!secret) throw new Error("GOOGLE_CLIENT_SECRET is not defined in .env");
+  return secret;
 }

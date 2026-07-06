@@ -2,7 +2,7 @@ import mongoose, { Schema, Document } from "mongoose";
 
 export interface IUser extends Document {
   email: string;
-  password: string;
+  password?: string;
   refreshToken?: string;
   resetPasswordTokenHash?: string;
   resetPasswordExpires?: Date;
@@ -11,6 +11,9 @@ export interface IUser extends Document {
   verifyEmailExpires?: Date;
   failedLoginAttempts?: number;
   lockUntil?: Date;
+  googleId?: string;
+  provider: "local" | "google" | "github";
+  role: "user" | "admin" | "moderator";
 }
 
 const userSchema = new Schema<IUser>(
@@ -24,7 +27,6 @@ const userSchema = new Schema<IUser>(
     },
     password: {
       type: String,
-      required: true,
     },
     refreshToken: {
       type: String,
@@ -41,6 +43,13 @@ const userSchema = new Schema<IUser>(
     verifyEmailExpires: { type: Date },
     failedLoginAttempts: { type: Number, default: 0 },
     lockUntil: { type: Date },
+    googleId: { type: String },
+    provider: { type: String, enum: ["local", "google", "github"] },
+    role: {
+      type: String,
+      enum: ["user", "admin", "moderator"],
+      default: "user",
+    },
   },
   { timestamps: true },
 );
