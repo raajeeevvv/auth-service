@@ -14,6 +14,9 @@ import { authLimiter, generalLimiter } from "../middleware/rateLimiter";
 import { authControllerGoogleCallback } from "../controllers/authControllerGoogleCallback";
 import { authMiddleware } from "../middleware/authMiddleware";
 import { requireRole } from "../middleware/requireRole";
+import { authControllerTwoFactorVerify } from "../controllers/authControllerTwoFactorVerify";
+import { authControllerTwoFactorSetup } from "../controllers/authControllerTwoFactorSetup";
+import { authControllerTwoFactorLogin } from "../controllers/authControllerTwoFactorLogin";
 
 router.post("/login", authLimiter, authControllerLogin);
 router.post("/forgot-password", authLimiter, authControllerForgotPassword);
@@ -43,6 +46,10 @@ router.get(
 
 router.get("/admin-only", authMiddleware, requireRole("admin"), (req, res) => {
   res.json({ message: "Welcome admin" });
-});
+}); //delete later
+
+router.post("/twofactor/setup", authMiddleware, authControllerTwoFactorSetup);
+router.post("/twofactor/verify", authMiddleware, authControllerTwoFactorVerify);
+router.post("/twofactor/login", authControllerTwoFactorLogin);
 
 export default router;

@@ -14,7 +14,7 @@ export function authMiddleware(
     }
     const verify = jwt.verify(token, getJwtSecret());
     
-    req.user = verify;
+    req.user = verify; // why no check after verify ? becasuer it throw error and it will caught by try catch 
 
     next();
   } catch (error) {

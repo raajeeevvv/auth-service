@@ -16,55 +16,66 @@ export async function authControllerLogin(req: Request, res: Response) {
     }
     const { email, password } = parsedUser.data;
 
-    const isUserExist = await User.findOne({
+    const user = await User.findOne({
       email: email,
     });
 
-    if (isUserExist == null) {
+    if (user == null) {
       return res.status(401).json({
         message: "Invalid credentials",
       });
     }
-    if (!isUserExist.isVerified) {
+    if (!user.isVerified) {
       return res
         .status(403)
         .json({ message: "Please verify your email before logging in" });
     }
 
-    const isLocked = isUserExist.lockUntil;
+    const isLocked = user.lockUntil;
     if (isLocked && isLocked > new Date()) {
       return res.status(403).json({
         message:
           "Account is locked due to multiple failed login attempts. Please try again later.",
       });
     }
-    if (
-      isUserExist.provider !== "local" ||
-      isUserExist.password === undefined
-    ) {
+    if (user.provider !== "local" || user.password === undefined) {
       return res.status(400).json({
         message: "This account uses social login. Please sign in with Google.",
       });
     }
-    const isPasswordCorrect = await bcrypt.compare(
-      password,
-      isUserExist.password,
-    );
+    const isPasswordCorrect = await bcrypt.compare(password, user.password);
 
     if (!isPasswordCorrect) {
-      isUserExist.failedLoginAttempts =
-        (isUserExist.failedLoginAttempts || 0) + 1;
-      if (isUserExist.failedLoginAttempts >= 5) {
-        isUserExist.lockUntil = new Date(Date.now() + 15 * 60 * 1000);
+      user.failedLoginAttempts = (user.failedLoginAttempts || 0) + 1;
+      if (user.failedLoginAttempts >= 5) {
+        user.lockUntil = new Date(Date.now() + 15 * 60 * 1000);
       }
-      await isUserExist.save();
+      await user.save();
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
     // making jwt token for auth of everyother request user send to backend
 
+    if (user.twoFactorEnabled) {
+      const tempToken = jwt.sign(
+        { id: user.id, requiresTwoFactor: true },
+        getJwtSecret(),
+        { expiresIn: "5m" },
+      );
+      res.cookie("tempToken", tempToken, {
+        httpOnly: true,
+        sameSite: "strict",
+        secure: false, //change in production
+        path: "/",
+        maxAge: 5 * 60 * 1000,
+      });
+      return res.status(200).json({
+        message: "Two Factor Reqired"
+      });
+    }
+
     const token = jwt.sign(
-      { email,id: isUserExist.id, role: isUserExist.role },
+      { email, id: user.id, role: user.role },
       getJwtSecret(),
       {
         expiresIn: "15m",
@@ -82,16 +93,16 @@ export async function authControllerLogin(req: Request, res: Response) {
 
     //refresh token
     const refreshToken = jwt.sign(
-      { email, id: isUserExist.id, role: isUserExist.role },
+      { email, id: user.id, role: user.role },
       getJwtSecretRefreshToken(),
       {
         expiresIn: "7d",
       },
     );
-    isUserExist.failedLoginAttempts = 0;
-    isUserExist.lockUntil = undefined;
-    isUserExist.refreshToken = refreshToken;
-    await isUserExist.save();
+    user.failedLoginAttempts = 0;
+    user.lockUntil = undefined;
+    user.refreshToken = refreshToken;
+    await user.save();
 
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,

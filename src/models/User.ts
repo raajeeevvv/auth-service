@@ -14,6 +14,8 @@ export interface IUser extends Document {
   googleId?: string;
   provider: "local" | "google" | "github";
   role: "user" | "admin" | "moderator";
+  twoFactorSecret?: string;
+  twoFactorEnabled?: boolean;
 }
 
 const userSchema = new Schema<IUser>(
@@ -50,6 +52,8 @@ const userSchema = new Schema<IUser>(
       enum: ["user", "admin", "moderator"],
       default: "user",
     },
+    twoFactorSecret: { type: String },
+    twoFactorEnabled: { type: Boolean },
   },
   { timestamps: true },
 );
