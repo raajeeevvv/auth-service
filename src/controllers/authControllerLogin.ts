@@ -1,9 +1,8 @@
 import { Request, Response } from "express";
 import User from "../models/User";
-import bcrypt from "bcryptjs";
 import { loginSchema } from "../validator/authValidator";
-import jwt from "jsonwebtoken";
-import { getJwtSecret, getJwtSecretRefreshToken } from "../config/env";
+import { comparePassword } from "../utils/password";
+import { generateAccessToken, generateRefreshToken } from "../utils/jwt";
 
 export async function authControllerLogin(req: Request, res: Response) {
   try {
@@ -43,7 +42,7 @@ export async function authControllerLogin(req: Request, res: Response) {
         message: "This account uses social login. Please sign in with Google.",
       });
     }
-    const isPasswordCorrect = await bcrypt.compare(password, user.password);
+    const isPasswordCorrect = await comparePassword(password, user.password);
 
     if (!isPasswordCorrect) {
       user.failedLoginAttempts = (user.failedLoginAttempts || 0) + 1;
@@ -56,11 +55,20 @@ export async function authControllerLogin(req: Request, res: Response) {
 
     // making jwt token for auth of everyother request user send to backend
 
+    const payload = {
+      email: user.email,
+      role: user.role,
+      id: user.id,
+    };
     if (user.twoFactorEnabled) {
-      const tempToken = jwt.sign(
-        { id: user.id, requiresTwoFactor: true },
-        getJwtSecret(),
-        { expiresIn: "5m" },
+      const tempToken = generateAccessToken(
+        {
+          email: user.email,
+          role: user.role,
+          id: user.id,
+          requiresTwoFactor: true,
+        },
+        "5m",
       );
       res.cookie("tempToken", tempToken, {
         httpOnly: true,
@@ -70,17 +78,11 @@ export async function authControllerLogin(req: Request, res: Response) {
         maxAge: 5 * 60 * 1000,
       });
       return res.status(200).json({
-        message: "Two Factor Reqired"
+        message: "Two Factor Reqired",
       });
     }
 
-    const token = jwt.sign(
-      { email, id: user.id, role: user.role },
-      getJwtSecret(),
-      {
-        expiresIn: "15m",
-      },
-    );
+    const token = generateAccessToken(payload, "15m");
 
     // setting token in the cookie so that i automatically being send as the user request the backend
     res.cookie("token", token, {
@@ -92,13 +94,7 @@ export async function authControllerLogin(req: Request, res: Response) {
     });
 
     //refresh token
-    const refreshToken = jwt.sign(
-      { email, id: user.id, role: user.role },
-      getJwtSecretRefreshToken(),
-      {
-        expiresIn: "7d",
-      },
-    );
+    const refreshToken = generateRefreshToken(payload, "7d");
     user.failedLoginAttempts = 0;
     user.lockUntil = undefined;
     user.refreshToken = refreshToken;

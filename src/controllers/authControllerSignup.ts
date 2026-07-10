@@ -1,8 +1,7 @@
 import { Request, Response } from "express";
 import User from "../models/User";
-import bcrypt from "bcryptjs";
 import { signupSchema } from "../validator/authValidator";
-import { getSaltRound } from "../config/env";
+import { hashPassword } from "../utils/password";
 
 export async function authControllerSignup(req: Request, res: Response) {
   try {
@@ -23,12 +22,11 @@ export async function authControllerSignup(req: Request, res: Response) {
         message: "User already exist try with other email",
       });
     }
-    const hashedPassword = await bcrypt.hash(password, getSaltRound());
-
-    const user = await User.create({
+    const hashedPassword = await hashPassword(password);
+    await User.create({
       email: email,
       password: hashedPassword,
-      provider:'local'
+      provider: "local",
     });
 
     return res.status(201).json({

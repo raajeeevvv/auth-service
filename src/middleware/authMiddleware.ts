@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import { getJwtSecret } from "../config/env";
+import { verifyAccessToken } from "../utils/jwt";
 
 export function authMiddleware(
   req: Request,
@@ -12,9 +13,9 @@ export function authMiddleware(
     if (!token) {
       return res.status(401).json({ message: "No token provided" });
     }
-    const verify = jwt.verify(token, getJwtSecret());
-    
-    req.user = verify; // why no check after verify ? becasuer it throw error and it will caught by try catch 
+    const verify = verifyAccessToken(token);
+
+    req.user = verify; // why no check after verify ? becasuer it throw error and it will caught by try catch
 
     next();
   } catch (error) {

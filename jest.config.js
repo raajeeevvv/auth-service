@@ -10,4 +10,5 @@ module.exports = {
     "^.+\\.[tj]sx?$": "ts-jest",
   },
   transformIgnorePatterns: ["node_modules/(?!(@scure|otplib)/)"],
+  setupFiles: ["<rootDir>/jest.setup.ts"], // .env.test setup here
 };

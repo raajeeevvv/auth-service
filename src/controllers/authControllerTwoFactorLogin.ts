@@ -1,9 +1,7 @@
 import { Request, Response } from "express";
 import { verify } from "otplib";
-import { getJwtSecret, getJwtSecretRefreshToken } from "../config/env";
-import jwt from "jsonwebtoken";
 import User from "../models/User";
-import { AuthPayload } from "../types";
+import { generateAccessToken, generateRefreshToken, verifyAccessToken} from "../utils/jwt";
 
 export async function authControllerTwoFactorLogin(
   req: Request,
@@ -20,7 +18,7 @@ export async function authControllerTwoFactorLogin(
         message: "Token not found, Retry login again",
       });
     }
-    const jwtVerify = jwt.verify(tempToken, getJwtSecret());
+    const jwtVerify = verifyAccessToken(tempToken);
 
     if (typeof jwtVerify === "string") {
       return res.status(401).json({ message: "Invalid token payload" });
@@ -48,13 +46,8 @@ export async function authControllerTwoFactorLogin(
       });
     }
 
-    const token = jwt.sign(
-      { email: user.email, id: user.id, role: user.role },
-      getJwtSecret(),
-      {
-        expiresIn: "15m",
-      },
-    );
+    const payload = { email: user.email, id: user.id, role: user.role };
+    const token = generateAccessToken(payload, "15m");
 
     // setting token in the cookie so that i automatically being send as the user request the backend
     res.cookie("token", token, {
@@ -66,13 +59,7 @@ export async function authControllerTwoFactorLogin(
     });
 
     //refresh token
-    const refreshToken = jwt.sign(
-      { email: user.email, id: user.id, role: user.role },
-      getJwtSecretRefreshToken(),
-      {
-        expiresIn: "7d",
-      },
-    );
+    const refreshToken = generateRefreshToken(payload, "7d");
     user.refreshToken = refreshToken;
     await user.save();
 

@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { verifyEmailSchema } from "../validator/authValidator";
-import crypto from "crypto";
 import User from "../models/User";
+import { generateHashedToken } from "../utils/token";
 
 export async function authControllerVerifyEmail(req: Request, res: Response) {
   try {
@@ -13,7 +13,7 @@ export async function authControllerVerifyEmail(req: Request, res: Response) {
     }
     const { token } = parsedResult.data;
     //hash the token
-    const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+    const tokenHash = generateHashedToken(token);
 
     const user = await User.findOne({
       verifyEmailTokenHash: tokenHash,

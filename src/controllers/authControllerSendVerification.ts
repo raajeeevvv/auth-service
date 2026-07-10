@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { sendVerificationSchema } from "../validator/authValidator";
 import crypto from "crypto";
 import User from "../models/User";
+import { generateHashedToken, generateToken } from "../utils/token";
 
 export async function authControllerSendVerification(
   req: Request,
@@ -13,7 +14,7 @@ export async function authControllerSendVerification(
       return res
         .status(400)
         .json({ message: "Invalid input", errors: parsedResult.error.issues });
-    } 
+    }
 
     const { email } = parsedResult.data;
     const user = await User.findOne({ email });
@@ -23,23 +24,18 @@ export async function authControllerSendVerification(
       });
     }
     if (user.isVerified) {
-      return res
-        .status(200)
-        .json({
-          message: "If that email exists, a verify link has been sent.",
-        });
+      return res.status(200).json({
+        message: "If that email exists, a verify link has been sent.",
+      });
     }
 
-    const rawToken = crypto.randomBytes(32).toString("hex"); // this will be shared to the email
-    const tokenHash = crypto
-      .createHash("sha256")
-      .update(rawToken)
-      .digest("hex"); // this will be stored in db to authenticate
+    const rawToken = generateToken(); // this will be shared to the email
+    const hashedToken = generateHashedToken(rawToken); // this will be stored in db to authenticate
 
     // generate the email link
     const link = `http://localhost:5173/verify-email?token=${rawToken}`;
     console.log("email Link is", link);
-    user.verifyEmailTokenHash = tokenHash;
+    user.verifyEmailTokenHash = hashedToken;
     user.verifyEmailExpires = new Date(Date.now() + 15 * 60 * 1000);
     await user.save();
 
