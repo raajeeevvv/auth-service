@@ -1,8 +1,6 @@
 import { Request, Response } from "express";
-import User, { IUser } from "../models/User";
-import jwt from "jsonwebtoken";
-import { getJwtSecret, getJwtSecretRefreshToken } from "../config/env";
 import { AuthPayload } from "../types";
+import { generateAccessToken, generateRefreshToken } from "../utils/jwt";
 
 export async function authControllerGoogleCallback(
   req: Request,
@@ -16,16 +14,8 @@ export async function authControllerGoogleCallback(
       });
     }
     const { email, role, id } = user;
-    const token = jwt.sign({ email, id, role }, getJwtSecret(), {
-      expiresIn: "15m",
-    });
-    const refreshToken = jwt.sign(
-      { email, id, role },
-      getJwtSecretRefreshToken(),
-      {
-        expiresIn: "7d",
-      },
-    );
+    const token = generateAccessToken({ email, id, role }, "15m");
+    const refreshToken = generateRefreshToken({ email, id, role }, "7d");
 
     res.cookie("token", token, {
       httpOnly: true,

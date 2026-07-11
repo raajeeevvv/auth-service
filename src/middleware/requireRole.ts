@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
-import { IUser } from "../models/User";
 import { AuthPayload } from "../types";
 
+// factory function "requireRole"
 export function requireRole(...roles: string[]) {
   return (req: Request, res: Response, next: NextFunction) => {
     try {

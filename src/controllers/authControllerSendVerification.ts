@@ -1,6 +1,5 @@
 import { Request, Response } from "express";
 import { sendVerificationSchema } from "../validator/authValidator";
-import crypto from "crypto";
 import User from "../models/User";
 import { generateHashedToken, generateToken } from "../utils/token";
 

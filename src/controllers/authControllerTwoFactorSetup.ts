@@ -1,10 +1,13 @@
 import { Request, Response } from "express";
 import { AuthPayload } from "../types";
 import User from "../models/User";
-import { generateSecret, generate, verify, generateURI } from "otplib";
+import { generateSecret, generateURI } from "otplib";
 import qrcode from "qrcode";
 
-export async function authControllerTwoFactorSetup(req: Request, res: Response) {
+export async function authControllerTwoFactorSetup(
+  req: Request,
+  res: Response,
+) {
   try {
     const { id, email } = req.user as AuthPayload;
     const user = await User.findById(id);

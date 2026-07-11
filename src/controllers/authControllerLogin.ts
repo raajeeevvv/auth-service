@@ -24,19 +24,13 @@ export async function authControllerLogin(req: Request, res: Response) {
         message: "Invalid credentials",
       });
     }
-    if (!user.isVerified) {
-      return res
-        .status(403)
-        .json({ message: "Please verify your email before logging in" });
-    }
 
-    const isLocked = user.lockUntil;
-    if (isLocked && isLocked > new Date()) {
-      return res.status(403).json({
-        message:
-          "Account is locked due to multiple failed login attempts. Please try again later.",
-      });
-    }
+    // TODO(security): this check runs before password comparison, which leaks account
+    // existence + auth provider to anyone who submits the right email (no password needed).
+    // Same enumeration issue that isVerified/lockUntil had — fix requires comparing against
+    // a dummy hash when user.password is undefined, so timing/response matches a real failed
+    // password attempt. Deferred — needs its own focused pass, not a quick inline fix.
+
     if (user.provider !== "local" || user.password === undefined) {
       return res.status(400).json({
         message: "This account uses social login. Please sign in with Google.",
@@ -51,6 +45,20 @@ export async function authControllerLogin(req: Request, res: Response) {
       }
       await user.save();
       return res.status(401).json({ message: "Invalid credentials" });
+    }
+
+    if (!user.isVerified) {
+      return res
+        .status(403)
+        .json({ message: "Please verify your email before logging in" });
+    }
+
+    const isLocked = user.lockUntil;
+    if (isLocked && isLocked > new Date()) {
+      return res.status(403).json({
+        message:
+          "Account is locked due to multiple failed login attempts. Please try again later.",
+      });
     }
 
     // making jwt token for auth of everyother request user send to backend

@@ -1,7 +1,7 @@
 import { Response, Request } from "express";
 import { forgotPasswordSchema } from "../validator/authValidator";
-import crypto from "crypto";
 import User from "../models/User";
+import { generateHashedToken, generateToken } from "../utils/token";
 
 export async function authControllerForgotPassword(
   req: Request,
@@ -26,11 +26,8 @@ export async function authControllerForgotPassword(
       });
     }
 
-    const rawToken = crypto.randomBytes(32).toString("hex"); // this will be shared to the email
-    const tokenHash = crypto
-      .createHash("sha256")
-      .update(rawToken)
-      .digest("hex"); // this will be stored in db to authenticate
+    const rawToken = generateToken()// this will be shared to the email
+    const tokenHash = generateHashedToken(rawToken) // this will be stored in db to authenticate
 
     // generate the email link
     const link = `http://localhost:5173/reset-password?token=${rawToken}`;

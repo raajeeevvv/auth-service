@@ -1,6 +1,4 @@
 import { Request, Response, NextFunction } from "express";
-import jwt from "jsonwebtoken";
-import { getJwtSecret } from "../config/env";
 import { verifyAccessToken } from "../utils/jwt";
 
 export function authMiddleware(

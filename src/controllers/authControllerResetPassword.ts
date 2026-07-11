@@ -1,9 +1,8 @@
 import { Response, Request } from "express";
 import { resetPasswordSchema } from "../validator/authValidator";
-import crypto from "crypto";
 import User from "../models/User";
-import bcrypt from "bcryptjs";
-import { getSaltRound } from "../config/env";
+import { generateHashedToken } from "../utils/token";
+import { hashPassword } from "../utils/password";
 
 export async function authControllerResetPassword(req: Request, res: Response) {
   try {
@@ -14,7 +13,7 @@ export async function authControllerResetPassword(req: Request, res: Response) {
         .json({ message: "Invalid input", errors: parsedResult.error.issues });
     }
     const { token, newPassword } = parsedResult.data;
-    const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+    const tokenHash = generateHashedToken(token);
 
     const user = await User.findOne({
       resetPasswordTokenHash: tokenHash,
@@ -26,7 +25,7 @@ export async function authControllerResetPassword(req: Request, res: Response) {
       });
     }
 
-    const hashedPassword = await bcrypt.hash(newPassword, getSaltRound());
+    const hashedPassword = await hashPassword(newPassword);
 
     //db calls
     user.password = hashedPassword;

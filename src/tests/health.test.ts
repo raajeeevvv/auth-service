@@ -29,7 +29,6 @@ afterAll(async () => {
 describe("Dummy sanity test", () => {
   it("should hit a route and get a response", async () => {
     const response = await request(app).get("/health");
-    console.log(process.env.GOOGLE_CLIENT_SECRET);
     expect(response.status).toBeDefined();
   });
 });

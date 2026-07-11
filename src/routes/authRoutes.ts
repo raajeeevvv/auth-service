@@ -48,6 +48,10 @@ router.get("/admin-only", authMiddleware, requireRole("admin"), (req, res) => {
   res.json({ message: "Welcome admin" });
 }); //delete later
 
+router.get("/protected-test-only", authMiddleware, (req, res) => {
+  res.status(200).json({ message: "ok" });
+});
+
 router.post("/twofactor/setup", authMiddleware, authControllerTwoFactorSetup);
 router.post("/twofactor/verify", authMiddleware, authControllerTwoFactorVerify);
 router.post("/twofactor/login", authControllerTwoFactorLogin);
