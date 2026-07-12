@@ -23,7 +23,7 @@ router.post("/forgot-password", authLimiter, authControllerForgotPassword);
 router.post("/send-verification", authLimiter, authControllerSendVerification);
 router.post("/signup", authLimiter, authControllerSignup);
 
-router.post("/logout", generalLimiter, authControllerLogout);
+router.post("/logout", generalLimiter, authMiddleware, authControllerLogout);
 router.post("/refresh", generalLimiter, authControllerRefreshToken);
 router.post("/reset-password", generalLimiter, authControllerResetPassword);
 router.post("/verify-email", generalLimiter, authControllerVerifyEmail);

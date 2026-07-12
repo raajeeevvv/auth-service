@@ -13,6 +13,7 @@ import mongoose from "mongoose";
 import app from "../app";
 import User from "../models/User";
 import { hashPassword } from "../utils/password";
+import { createDummyUser } from "./helper/createDummyUser";
 
 let mongoServer: MongoMemoryServer;
 
@@ -52,14 +53,8 @@ describe("authMiddleware", () => {
     expect(response.body.message).toBe("Invalid or expired token");
   });
 
-  it("should return 200 with a valid token", async () => {
-    const hashedPassword = await hashPassword("thisispassword");
-    await User.create({
-      email: "test@test.com",
-      password: hashedPassword,
-      provider: "local",
-      isVerified: true,
-    });
+  it("should return 200 with a valid token", async () => { 
+    await createDummyUser()
 
     const loginResponse = await request(app)
       .post("/api/auth/login")

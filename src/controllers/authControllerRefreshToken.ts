@@ -8,27 +8,28 @@ export async function authControllerRefreshToken(req: Request, res: Response) {
     if (!refreshToken) {
       return res.status(401).json({ message: "No refresh token provided" });
     }
-    const decoded = verifyRefreshToken(refreshToken);
 
-    console.log("1");
+    let decoded;
+    try {
+      decoded = verifyRefreshToken(refreshToken);
+    } catch (err) {
+      return res.status(401).json({ message: "Invalid refresh token" });
+    }
+
     if (typeof decoded === "string") {
       return res.status(401).json({ message: "Invalid refresh token" });
     }
 
-    console.log("2");
     const { id } = decoded;
     const user = await User.findById(id);
     if (!user) {
       return res.status(401).json({ message: "Invalid refresh token" });
     }
 
-    console.log("3");
     if (user.refreshToken !== refreshToken) {
       return res.status(401).json({ message: "Invalid refresh token" });
     }
 
-    console.log("4")
-    //genereate new token
     const payload = {
       email: user.email,
       id: user.id,
@@ -36,9 +37,9 @@ export async function authControllerRefreshToken(req: Request, res: Response) {
     };
     const token = generateAccessToken(payload, "15m");
     res.cookie("token", token, {
-      httpOnly: true, // this "true" means that the JS/DOM cannot access it throuf document.cookie to prevent XSS
-      sameSite: "strict", // to prevent CSRF attack
-      secure: false, // make it true during production
+      httpOnly: true,
+      sameSite: "strict",
+      secure: false,
       maxAge: 15 * 60 * 1000,
       path: "/",
     });
