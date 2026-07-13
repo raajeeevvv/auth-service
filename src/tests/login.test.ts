@@ -13,6 +13,7 @@ import mongoose from "mongoose";
 import app from "../app";
 import User from "../models/User";
 import { hashPassword } from "../utils/password";
+import { createDummyUser } from "./helper/createDummyUser";
 
 let mongoServer: MongoMemoryServer;
 
@@ -90,5 +91,29 @@ describe("POST /signup", () => {
 
     expect(response.status).toBe(401);
     expect(response.body.message).toBe("Invalid credentials");
+  });
+
+  it("should return 403 with message helpful message to verified user", async () => {
+    const user = await createDummyUser({
+      password: "thisispass",
+      isVerified: true,
+    });
+    for (let i = 0; i < 5; i++) {
+      await request(app)
+        .post("/api/auth/login")
+        .send({ email: user.email, password: "wrong-password" });
+    }
+    const userFromDb = await User.findById(user.id);
+    const failedLoginAttempts = userFromDb?.failedLoginAttempts;
+    expect(failedLoginAttempts).toBe(5);
+    expect(userFromDb?.lockUntil).toBeDefined();
+
+    const response = await request(app)
+      .post("/api/auth/login")
+      .send({ email: user.email, password: "thisispass" });
+    expect(response.status).toBe(403);
+    expect(response.body.message).toBe(
+      "Account is locked due to multiple failed login attempts. Please try again later.",
+    );
   });
 });

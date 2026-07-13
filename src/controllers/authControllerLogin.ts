@@ -1,8 +1,10 @@
 import { Request, Response } from "express";
-import User from "../models/User";
+import User, { IUser } from "../models/User";
 import { loginSchema } from "../validator/authValidator";
 import { comparePassword } from "../utils/password";
 import { generateAccessToken, generateRefreshToken } from "../utils/jwt";
+import { DUMMY_PASSWORD_HASH } from "../config/dummyHash";
+import { AuthPayload } from "../types";
 
 export async function authControllerLogin(req: Request, res: Response) {
   try {
@@ -14,46 +16,38 @@ export async function authControllerLogin(req: Request, res: Response) {
       });
     }
     const { email, password } = parsedUser.data;
+    const user = await User.findOne({ email });
 
-    const user = await User.findOne({
-      email: email,
-    });
+    const hashToCompareAgainst =
+      user && user.provider === "local" && user.password
+        ? user.password
+        : DUMMY_PASSWORD_HASH;
 
-    if (user == null) {
-      return res.status(401).json({
-        message: "Invalid credentials",
-      });
-    }
-
-    // TODO(security): this check runs before password comparison, which leaks account
-    // existence + auth provider to anyone who submits the right email (no password needed).
-    // Same enumeration issue that isVerified/lockUntil had — fix requires comparing against
-    // a dummy hash when user.password is undefined, so timing/response matches a real failed
-    // password attempt. Deferred — needs its own focused pass, not a quick inline fix.
-
-    if (user.provider !== "local" || user.password === undefined) {
-      return res.status(400).json({
-        message: "This account uses social login. Please sign in with Google.",
-      });
-    }
-    const isPasswordCorrect = await comparePassword(password, user.password);
+    const isPasswordCorrect = await comparePassword(
+      password,
+      hashToCompareAgainst,
+    );
 
     if (!isPasswordCorrect) {
-      user.failedLoginAttempts = (user.failedLoginAttempts || 0) + 1;
-      if (user.failedLoginAttempts >= 5) {
-        user.lockUntil = new Date(Date.now() + 15 * 60 * 1000);
+      if (user && user.provider === "local" && user.password) {
+        user.failedLoginAttempts = (user.failedLoginAttempts || 0) + 1;
+        if (user.failedLoginAttempts >= 5) {
+          user.lockUntil = new Date(Date.now() + 15 * 60 * 1000);
+        }
+        await user.save();
       }
-      await user.save();
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
-    if (!user.isVerified) {
+    const authenticatedUser = user as AuthPayload;
+
+    if (!authenticatedUser.isVerified) {
       return res
         .status(403)
         .json({ message: "Please verify your email before logging in" });
     }
 
-    const isLocked = user.lockUntil;
+    const isLocked = authenticatedUser.lockUntil;
     if (isLocked && isLocked > new Date()) {
       return res.status(403).json({
         message:
@@ -61,60 +55,50 @@ export async function authControllerLogin(req: Request, res: Response) {
       });
     }
 
-    // making jwt token for auth of everyother request user send to backend
-
     const payload = {
-      email: user.email,
-      role: user.role,
-      id: user.id,
+      email: authenticatedUser.email,
+      role: authenticatedUser.role,
+      id: authenticatedUser.id,
     };
-    if (user.twoFactorEnabled) {
+
+    if (authenticatedUser.twoFactorEnabled) {
       const tempToken = generateAccessToken(
-        {
-          email: user.email,
-          role: user.role,
-          id: user.id,
-          requiresTwoFactor: true,
-        },
+        { ...payload, requiresTwoFactor: true },
         "5m",
       );
       res.cookie("tempToken", tempToken, {
         httpOnly: true,
         sameSite: "strict",
-        secure: false, //change in production
+        secure: false,
         path: "/",
         maxAge: 5 * 60 * 1000,
       });
-      return res.status(200).json({
-        message: "Two Factor Reqired",
-      });
+      return res.status(200).json({ message: "Two Factor Reqired" });
     }
 
     const token = generateAccessToken(payload, "15m");
-
-    // setting token in the cookie so that i automatically being send as the user request the backend
     res.cookie("token", token, {
-      httpOnly: true, // this "true" means that the JS/DOM cannot access it throuf document.cookie to prevent XSS
-      sameSite: "strict", // to prevent CSRF attack
-      secure: false, // make it true during production
+      httpOnly: true,
+      sameSite: "strict",
+      secure: false,
       maxAge: 15 * 60 * 1000,
       path: "/",
     });
 
-    //refresh token
     const refreshToken = generateRefreshToken(payload, "7d");
-    user.failedLoginAttempts = 0;
-    user.lockUntil = undefined;
-    user.refreshToken = refreshToken;
-    await user.save();
+    authenticatedUser.failedLoginAttempts = 0;
+    authenticatedUser.lockUntil = undefined;
+    authenticatedUser.refreshToken = refreshToken;
+    await authenticatedUser.save();
 
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
       sameSite: "strict",
-      secure: false, // change in production to true
+      secure: false,
       maxAge: 7 * 24 * 60 * 60 * 1000,
       path: "/",
     });
+    
 
     return res.status(200).json({ message: "User logged in successfully" });
   } catch (error) {

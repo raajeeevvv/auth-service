@@ -1,5 +1,7 @@
 import { rateLimit } from "express-rate-limit";
 
+
+
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 10,
@@ -7,6 +9,7 @@ const authLimiter = rateLimit({
   legacyHeaders: false,
   ipv6Subnet: 56,
   message: { message: "Too many requests, please try again later" },
+  skip: () => process.env.NODE_ENV === "test",
 });
 const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
