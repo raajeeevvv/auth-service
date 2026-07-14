@@ -6,9 +6,9 @@ export function requireRole(...roles: string[]) {
   return (req: Request, res: Response, next: NextFunction) => {
     try {
       const user = req.user as AuthPayload;
-      if (!user || !user) {
+      if (!user) {
         return res.status(401).json({
-          message: "Forbidden",
+          message: "Unauthorized",
         });
       }
       if (!roles.includes(user.role)) {

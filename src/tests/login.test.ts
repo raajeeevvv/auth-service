@@ -116,4 +116,28 @@ describe("POST /signup", () => {
       "Account is locked due to multiple failed login attempts. Please try again later.",
     );
   });
+  it("should reset failedLogoutAttempt count to 0 after successfull login", async () => {
+    const user = await createDummyUser({
+      password: "thisispass",
+      isVerified: true,
+    });
+    for (let i = 0; i < 3; i++) {
+      await request(app)
+        .post("/api/auth/login")
+        .send({ email: user.email, password: "wrong-password" });
+    }
+    const userFromDb = await User.findById(user.id);
+    const failedLoginAttempts = userFromDb?.failedLoginAttempts;
+    expect(failedLoginAttempts).toBe(3);
+    expect(userFromDb?.lockUntil).toBeUndefined();
+
+    const response = await request(app)
+      .post("/api/auth/login")
+      .send({ email: user.email, password: "thisispass" });
+    const userFromDbAgain = await User.findById(user.id);
+    expect(userFromDbAgain?.failedLoginAttempts).toBe(0);
+    expect(userFromDbAgain?.lockUntil).toBeUndefined();
+    expect(response.status).toBe(200);
+    expect(response.body.message).toBe("User logged in successfully");
+  });
 });

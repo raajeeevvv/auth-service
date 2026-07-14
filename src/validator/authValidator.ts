@@ -22,13 +22,16 @@ type forgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
 
 const resetPasswordSchema = z.object({
   token: z.string(),
- newPassword: z.string().min(8, "Password must be at least 8 characters"),
+  newPassword: z.string().min(8, "Password must be at least 8 characters"),
 });
 
 type resetPasswordInput = z.infer<typeof resetPasswordSchema>;
 
 const sendVerificationSchema = z.object({ email: z.email() });
 const verifyEmailSchema = z.object({ token: z.string() });
+const twoFactorVerifyOtpSchema = z.object({
+  otp: z.string().min(1, "OTP is required"),
+});
 
 export {
   signupSchema,
@@ -37,6 +40,7 @@ export {
   resetPasswordSchema,
   sendVerificationSchema,
   verifyEmailSchema,
+  twoFactorVerifyOtpSchema,
 };
 export type {
   SignupInput,
