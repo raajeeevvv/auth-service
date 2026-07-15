@@ -45,7 +45,7 @@ router.get(
 );
 
 router.get("/admin-only", authMiddleware, requireRole("admin"), (req, res) => {
-  res.json({ message: "Welcome admin" });
+  return res.json({ message: "Welcome admin" });
 }); //delete later
 
 router.get("/protected-test-only", authMiddleware, (req, res) => {

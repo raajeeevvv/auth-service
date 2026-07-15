@@ -1,23 +1,36 @@
 import { Request, Response } from "express";
 import { verify } from "otplib";
 import User from "../models/User";
-import { generateAccessToken, generateRefreshToken, verifyAccessToken} from "../utils/jwt";
+import {
+  generateAccessToken,
+  generateRefreshToken,
+  verifyAccessToken,
+} from "../utils/jwt";
+import { AuthPayload } from "../types";
+import { twoFactorVerifyOtpSchema } from "../validator/authValidator";
 
 export async function authControllerTwoFactorLogin(
   req: Request,
   res: Response,
 ) {
   try {
-    const { otp } = req.body;
-    if (!otp) {
-      return res.status(400).json({ message: "OTP is required" });
+    const parsed = twoFactorVerifyOtpSchema.safeParse(req.body);
+
+    if (!parsed.success) {
+      return res.status(400).json({
+        message: "OTP is required",
+      });
     }
+
+    const { otp } = parsed.data;
     const tempToken = req.cookies.tempToken;
     if (!tempToken) {
       return res.status(400).json({
         message: "Token not found, Retry login again",
       });
     }
+    console.log("otp",otp);
+    console.log("token is",tempToken);
     const jwtVerify = verifyAccessToken(tempToken);
 
     if (typeof jwtVerify === "string") {

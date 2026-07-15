@@ -29,7 +29,7 @@ export async function authControllerTwoFactorSetup(
     });
     const qrCode = await qrcode.toDataURL(uri);
 
-    res.status(200).json({
+    return res.status(200).json({
       message: "2FA setup initiated — scan QR code then verify",
       qrCodeDataUrl: qrCode, // ← rq → qr
     });

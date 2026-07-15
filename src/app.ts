@@ -24,11 +24,11 @@ app.use(
 
 // health check — fine to keep during dev
 app.get("/health", (req: Request, res: Response) => {
-  res.send("Hello World!, This is your backend");
+  return res.send("Hello World!, This is your backend");
 });
 
 app.get("/api/auth/me", authMiddleware, (req: Request, res: Response) => {
-  res.status(200).json({ user: req.user });
+  return res.status(200).json({ user: req.user });
 });
 // routes
 app.use("/api/auth", authRoutes);

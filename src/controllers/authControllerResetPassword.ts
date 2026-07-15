@@ -26,8 +26,6 @@ export async function authControllerResetPassword(req: Request, res: Response) {
     }
 
     const hashedPassword = await hashPassword(newPassword);
-
-    //db calls
     user.password = hashedPassword;
     user.resetPasswordTokenHash = undefined;
     user.refreshToken = undefined;

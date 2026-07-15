@@ -35,7 +35,7 @@ export async function authControllerGoogleCallback(
 
     user.refreshToken = refreshToken;
     await user.save();
-    return res.redirect("http://localhost:5173/dashboard");
+    return res.redirect("http://localhost:5173/dashboard"); //Change after doing manual test
   } catch (error) {
     console.error("Error in authControllerGoogleCallback", error);
     return res.status(500).json({

@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import User, { IUser } from "../models/User";
+import User from "../models/User";
 import { loginSchema } from "../validator/authValidator";
 import { comparePassword } from "../utils/password";
 import { generateAccessToken, generateRefreshToken } from "../utils/jwt";
@@ -18,6 +18,7 @@ export async function authControllerLogin(req: Request, res: Response) {
     const { email, password } = parsedUser.data;
     const user = await User.findOne({ email });
 
+    // did this to prevent timing attacks 
     const hashToCompareAgainst =
       user && user.provider === "local" && user.password
         ? user.password
