@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import User from "../models/User";
 import { signupSchema } from "../validator/authValidator";
 import { hashPassword } from "../utils/password";
+import { sendVerificationEmail } from "../service/verificationService";
 
 export async function authControllerSignup(req: Request, res: Response) {
   try {
@@ -23,14 +24,15 @@ export async function authControllerSignup(req: Request, res: Response) {
       });
     }
     const hashedPassword = await hashPassword(password);
-    await User.create({
+    const user = await User.create({
       email: email,
       password: hashedPassword,
       provider: "local",
     });
 
+    await sendVerificationEmail(user);
     return res.status(201).json({
-      message: "user created successfully",
+      message: "Email verification link has been sended to you email",
     });
   } catch (error) {
     console.error("Error in authControllerSignup", error);

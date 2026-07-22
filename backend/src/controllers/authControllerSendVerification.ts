@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { sendVerificationSchema } from "../validator/authValidator";
 import User from "../models/User";
 import { generateHashedToken, generateToken } from "../utils/token";
+import { sendVerificationEmail } from "../service/verificationService";
 
 export async function authControllerSendVerification(
   req: Request,
@@ -28,15 +29,7 @@ export async function authControllerSendVerification(
       });
     }
 
-    const rawToken = generateToken(); // this will be shared to the email
-    const hashedToken = generateHashedToken(rawToken); // this will be stored in db to authenticate
-
-    // generate the email link
-    const link = `http://localhost:5173/verify-email?token=${rawToken}`;
-    console.log("email Link is", link);
-    user.verifyEmailTokenHash = hashedToken;
-    user.verifyEmailExpires = new Date(Date.now() + 15 * 60 * 1000);
-    await user.save();
+    await sendVerificationEmail(user); 
 
     return res.status(200).json({
       message: "If that email exists, a verify link has been sent.",
