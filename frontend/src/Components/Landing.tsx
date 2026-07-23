@@ -1,5 +1,5 @@
 function Landing() {
-  return <div>hello from landing</div>;
+  return <div>Hello, This is Dashboard </div>;
 }
 
 export default Landing;

@@ -1,9 +1,9 @@
 import { useState } from "react";
 import axios from "axios";
 import { FcGoogle } from "react-icons/fc";
+import Alert from "../Ui/Alert";
 
-const BACKEND_URL =
-  `${import.meta.env.VITE_BACKEND_URL}`;
+const BACKEND_URL = `${import.meta.env.VITE_BACKEND_URL}`;
 
 interface UserDataProp {
   email: string;
@@ -14,6 +14,11 @@ export default function Signup() {
   const [userData, setUserData] = useState<UserDataProp>({
     email: "",
     password: "",
+  });
+  const [alert, setAlert] = useState({
+    show: false,
+    type: "success" as "success" | "error",
+    message: "",
   });
   const [isLoading, setIsLoading] = useState<boolean>(false);
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -35,13 +40,25 @@ export default function Signup() {
         `${BACKEND_URL}/api/auth/signup`,
         userData,
       );
-      console.log(response.data.message);
+      setAlert({
+        show: true,
+        type: "success",
+        message: response.data.message,
+      });
     } catch (error) {
-      console.log(error);
-      alert("Failed to signup try again !!");
+      if (axios.isAxiosError(error)) {
+        setAlert({
+          show: true,
+          type: "error",
+          message: error.response?.data.message,
+        });
+      }
     } finally {
       setIsLoading(false);
     }
+  }
+  async function handleOAuth() {
+    window.location.href = `${BACKEND_URL}/api/auth/google`;
   }
 
   return (
@@ -84,13 +101,6 @@ export default function Signup() {
                 >
                   Password
                 </label>
-
-                <a
-                  href="#"
-                  className="text-sm font-medium text-indigo-600 hover:text-indigo-500"
-                >
-                  Forgot password?
-                </a>
               </div>
 
               <input
@@ -108,11 +118,17 @@ export default function Signup() {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full rounded-md bg-indigo-600 py-2.5 text-white font-semibold hover:bg-indigo-500 disabled:opacity-50"
+              className="w-full rounded-md mb-5 bg-indigo-600 py-2.5 text-white font-semibold hover:bg-indigo-500 disabled:opacity-50"
             >
               {isLoading ? "Submitting..." : "Sign in"}
             </button>
           </form>
+          <a
+            href="/login"
+            className="text-sm font-medium text-indigo-600 hover:text-indigo-500"
+          >
+            Already have account ?
+          </a>
 
           {/* Divider */}
           <div className="my-8 flex items-center">
@@ -127,6 +143,7 @@ export default function Signup() {
           <button
             type="button"
             className="w-full flex items-center justify-center gap-3 rounded-md border border-gray-300 py-2.5 hover:bg-gray-50"
+            onClick={handleOAuth}
           >
             <FcGoogle className="text-xl" />
 
@@ -134,6 +151,20 @@ export default function Signup() {
           </button>
         </div>
       </div>
+      {alert.show ? (
+        <Alert
+          type={alert.type}
+          message={alert.message}
+          onClose={() =>
+            setAlert((prev) => ({
+              ...prev,
+              show: false,
+            }))
+          }
+        />
+      ) : (
+        <></>
+      )}
     </div>
   );
 }

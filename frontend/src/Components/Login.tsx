@@ -1,8 +1,10 @@
 import { useState } from "react";
 import axios from "axios";
 import { FcGoogle } from "react-icons/fc";
+import { useNavigate } from "react-router-dom";
+import Alert from "../Ui/Alert";
 
-const BACKEND_URL = "http://localhost:3000/api/auth/login";
+const BACKEND_URL = `${import.meta.env.VITE_BACKEND_URL}`;
 
 interface UserDataProp {
   email: string;
@@ -14,16 +16,22 @@ export default function Login() {
     email: "",
     password: "",
   });
+  const [alert, setAlert] = useState({
+    show: false,
+    type: "success" as "success" | "error",
+    message: "",
+  });
+  const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState<boolean>(false);
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const targetname: string = e.target.name;
     const value: string = e.target.value;
 
-    console.log(targetname,value);
+    
     setUserData((prev) => {
       return {
-        ...prev, 
-        [targetname]: value, 
+        ...prev,
+        [targetname]: value,
       };
     });
   }
@@ -32,15 +40,32 @@ export default function Login() {
     e.preventDefault();
     let response;
     try {
-      response = await axios.post(BACKEND_URL, userData);
-      console.log(response.data.message);
+      response = await axios.post(`${BACKEND_URL}/api/auth/login`, userData, {
+        withCredentials: true,
+      });
+      setAlert({
+        show: true,
+        type: "success",
+        message: response.data.message,
+      });
+      navigate("/");
     } catch (error) {
+      if (axios.isAxiosError(error)) {
+        setAlert({
+          show: true,
+          type: "error",
+          message: error.response?.data.message,
+        });
+      }
       if (response) {
         console.log(response.data.message, error);
       }
     } finally {
       setIsLoading(false);
     }
+  }
+  async function handleOAuth() {
+    window.location.href = `${BACKEND_URL}/api/auth/google`;
   }
 
   return (
@@ -85,7 +110,7 @@ export default function Login() {
                 </label>
 
                 <a
-                  href="#"
+                  href="/forgot-password"
                   className="text-sm font-medium text-indigo-600 hover:text-indigo-500"
                 >
                   Forgot password?
@@ -126,6 +151,7 @@ export default function Login() {
           <button
             type="button"
             className="w-full flex items-center justify-center gap-3 rounded-md border border-gray-300 py-2.5 hover:bg-gray-50"
+            onClick={handleOAuth}
           >
             <FcGoogle className="text-xl" />
 
@@ -133,7 +159,20 @@ export default function Login() {
           </button>
         </div>
       </div>
+      {alert.show ? (
+        <Alert
+          type={alert.type}
+          message={alert.message}
+          onClose={() =>
+            setAlert((prev) => ({
+              ...prev,
+              show: false,
+            }))
+          }
+        />
+      ) : (
+        <></>
+      )}
     </div>
   );
 }
-
