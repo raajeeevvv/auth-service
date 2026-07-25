@@ -6,6 +6,7 @@ import Login from "./Components/Login";
 import VerifyEmail from "./Components/VerifyEmail";
 import ForgotPassword from "./Components/ForgotPassword";
 import ResetPassword from "./Components/ResetPassword";
+import Setup2FA from "./Components/Setup2FA";
 
 function App() {
   return (
@@ -17,6 +18,7 @@ function App() {
         <Route path="/verify-email" element={<VerifyEmail />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/setup2fa" element={<Setup2FA />} />
       </Routes>
     </BrowserRouter>
   );
