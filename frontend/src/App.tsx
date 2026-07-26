@@ -7,6 +7,8 @@ import VerifyEmail from "./Components/VerifyEmail";
 import ForgotPassword from "./Components/ForgotPassword";
 import ResetPassword from "./Components/ResetPassword";
 import Setup2FA from "./Components/Setup2FA";
+import Verify2FA from "./Components/Verify2FA";
+import Login2FA from "./Components/Login2FA";
 
 function App() {
   return (
@@ -19,6 +21,8 @@ function App() {
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/setup2fa" element={<Setup2FA />} />
+        <Route path="/verify2fa" element={<Verify2FA />} />
+        <Route path="/login2fa" element={<Login2FA />} />
       </Routes>
     </BrowserRouter>
   );

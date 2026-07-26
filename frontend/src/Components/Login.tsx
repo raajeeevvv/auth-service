@@ -27,7 +27,6 @@ export default function Login() {
     const targetname: string = e.target.name;
     const value: string = e.target.value;
 
-    
     setUserData((prev) => {
       return {
         ...prev,
@@ -48,7 +47,12 @@ export default function Login() {
         type: "success",
         message: response.data.message,
       });
-      navigate("/");
+      if (response.data.is2faEnabled) {
+        console.log("inside2fa", response.data.is2faEnabled);
+        navigate("/login2FA");
+      } else {
+        navigate("/");
+      }
     } catch (error) {
       if (axios.isAxiosError(error)) {
         setAlert({

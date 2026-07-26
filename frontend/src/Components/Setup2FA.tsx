@@ -1,14 +1,22 @@
 import { useEffect, useState } from "react";
 import Loader from "../Ui/Loader";
-import axios from "axios";
+import api from "../api/axios";
 import { MdQrCodeScanner } from "react-icons/md";
+import { useNavigate } from "react-router-dom";
+import Alert from "../Ui/Alert";
 
 const BACKEND_URL = `${import.meta.env.VITE_BACKEND_URL}`;
 export default function Setup2FA() {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [qrcode, setQrcode] = useState<string>();
+  const [alert, setAlert] = useState({
+    show: false,
+    type: "success" as "success" | "error",
+    message: "",
+  });
+  const navigate = useNavigate();
   useEffect(() => {
-    axios
+    api
       .post(
         `${BACKEND_URL}/api/auth/twofactor/setup`,
         {},
@@ -18,10 +26,20 @@ export default function Setup2FA() {
         setQrcode(response.data.qrCodeDataUrl);
         setIsLoading(false);
       })
-      .catch((err) => {
-        console.log(err);
+      .catch((error) => {
+        setAlert({
+          show: true,
+          type: "error",
+          message: error.response?.data.message,
+        });
+        setTimeout(() => {
+          navigate("/");
+        }, 3000);
       });
   }, []);
+  async function handleContinue() {
+    navigate("/verify2fa");
+  }
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
       {isLoading ? (
@@ -51,6 +69,7 @@ export default function Setup2FA() {
               />
               <button
                 type="submit"
+                onClick={handleContinue}
                 className="w-full rounded-md mb-5 bg-indigo-600 py-2.5 text-white font-semibold hover:bg-indigo-500 disabled:opacity-50"
               >
                 Continue
@@ -58,6 +77,20 @@ export default function Setup2FA() {
             </div>
           </div>
         </div>
+      )}
+      {alert.show ? (
+        <Alert
+          type={alert.type}
+          message={alert.message}
+          onClose={() =>
+            setAlert((prev) => ({
+              ...prev,
+              show: false,
+            }))
+          }
+        />
+      ) : (
+        <></>
       )}
     </div>
   );
