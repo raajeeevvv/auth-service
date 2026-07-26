@@ -18,7 +18,7 @@ export async function authControllerLogin(req: Request, res: Response) {
     const { email, password } = parsedUser.data;
     const user = await User.findOne({ email });
 
-    // did this to prevent timing attacks 
+    // did this to prevent timing attacks
     const hashToCompareAgainst =
       user && user.provider === "local" && user.password
         ? user.password
@@ -74,7 +74,12 @@ export async function authControllerLogin(req: Request, res: Response) {
         path: "/",
         maxAge: 5 * 60 * 1000,
       });
-      return res.status(200).json({ message: "Two Factor Reqired" });
+      return res
+        .status(200)
+        .json({
+          message: "Two Factor Reqired",
+          is2faEnabled: user?.twoFactorEnabled,
+        });
     }
 
     const token = generateAccessToken(payload, "15m");
@@ -99,9 +104,10 @@ export async function authControllerLogin(req: Request, res: Response) {
       maxAge: 7 * 24 * 60 * 60 * 1000,
       path: "/",
     });
-    
 
-    return res.status(200).json({ message: "User logged in successfully" });
+    return res.status(200).json({
+      message: "User logged in successfully",
+    });
   } catch (error) {
     console.error("Error in authControllerLogin", error);
     return res.status(500).json({

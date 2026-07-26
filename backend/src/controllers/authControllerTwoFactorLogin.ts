@@ -6,7 +6,6 @@ import {
   generateRefreshToken,
   verifyAccessToken,
 } from "../utils/jwt";
-import { AuthPayload } from "../types";
 import { twoFactorVerifyOtpSchema } from "../validator/authValidator";
 
 export async function authControllerTwoFactorLogin(
@@ -29,8 +28,6 @@ export async function authControllerTwoFactorLogin(
         message: "Token not found, Retry login again",
       });
     }
-    console.log("otp",otp);
-    console.log("token is",tempToken);
     const jwtVerify = verifyAccessToken(tempToken);
 
     if (typeof jwtVerify === "string") {
