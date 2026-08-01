@@ -1,6 +1,8 @@
 import { Request, Response } from "express";
 import { AuthPayload } from "../types";
+import { prisma } from "../lib/prisma";
 import { generateAccessToken, generateRefreshToken } from "../utils/jwt";
+import { generateHashedToken } from "../utils/token";
 
 export async function authControllerGoogleCallback(
   req: Request,
@@ -33,8 +35,15 @@ export async function authControllerGoogleCallback(
       path: "/",
     });
 
-    user.refreshToken = refreshToken;
-    await user.save();
+    const hashedRefreshToken = generateHashedToken(refreshToken);
+    await prisma.refreshToken.create({
+      data: {
+        tokenHash: hashedRefreshToken,
+        userId: id,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      },
+    });
+
     return res.redirect("http://localhost:5173"); //Change after doing manual test
   } catch (error) {
     console.error("Error in authControllerGoogleCallback", error);

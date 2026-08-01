@@ -1,6 +1,6 @@
 import { Response, Request } from "express";
 import { resetPasswordSchema } from "../validator/authValidator";
-import User from "../models/User";
+import { prisma } from "../lib/prisma";
 import { generateHashedToken } from "../utils/token";
 import { hashPassword } from "../utils/password";
 
@@ -15,9 +15,11 @@ export async function authControllerResetPassword(req: Request, res: Response) {
     const { token, newPassword } = parsedResult.data;
     const tokenHash = generateHashedToken(token);
 
-    const user = await User.findOne({
-      resetPasswordTokenHash: tokenHash,
-      resetPasswordExpires: { $gt: new Date() }, // this is imp for the token expiry "gt = greate than" eg:10:12 > 10:10 true hence not expired yet
+    const user = await prisma.user.findFirst({
+      where: {
+        resetPasswordTokenHash: tokenHash,
+        resetPasswordExpires: { gt: new Date() }, // this is imp for the token expiry "gt = greate than" eg:10:12 > 10:10 true hence not expired yet
+      },
     });
     if (!user) {
       return res.status(400).json({
@@ -26,11 +28,17 @@ export async function authControllerResetPassword(req: Request, res: Response) {
     }
 
     const hashedPassword = await hashPassword(newPassword);
-    user.password = hashedPassword;
-    user.resetPasswordTokenHash = undefined;
-    user.refreshToken = undefined;
-    user.resetPasswordExpires = undefined;
-    await user.save();
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        password: hashedPassword,
+        resetPasswordTokenHash: null,
+        resetPasswordExpires: null,
+      },
+    });
+    await prisma.refreshToken.deleteMany({
+      where: { userId: user.id },
+    });
 
     return res.status(200).json({
       message: "Password has been reset !!",

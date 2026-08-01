@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { AuthPayload } from "../types";
-import User from "../models/User";
+import { prisma } from "../lib/prisma";
 import { generateSecret, generateURI } from "otplib";
 import qrcode from "qrcode";
 
@@ -10,7 +10,7 @@ export async function authControllerTwoFactorSetup(
 ) {
   try {
     const { id, email } = req.user as AuthPayload;
-    const user = await User.findById(id);
+    const user = await prisma.user.findUnique({ where: { id } });
     if (!user) {
       return res.status(401).json({ message: "User not found" });
     }
@@ -20,8 +20,10 @@ export async function authControllerTwoFactorSetup(
       });
     }
     const secret = generateSecret();
-    user.twoFactorSecret = secret;
-    await user.save();
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { twoFactorSecret: secret },
+    });
     const uri = generateURI({
       issuer: "auth-service",
       label: email,

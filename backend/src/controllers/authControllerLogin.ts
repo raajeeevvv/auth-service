@@ -1,10 +1,10 @@
 import { Request, Response } from "express";
-import User from "../models/User";
+import { prisma } from "../lib/prisma";
 import { loginSchema } from "../validator/authValidator";
 import { comparePassword } from "../utils/password";
 import { generateAccessToken, generateRefreshToken } from "../utils/jwt";
-import { DUMMY_PASSWORD_HASH } from "../config/dummyHash";
-import { AuthPayload } from "../types";
+import { generateHashedToken } from "../utils/token";
+import { DUMMY_PASSWORD_HASH } from "../lib/dummyHash";
 
 export async function authControllerLogin(req: Request, res: Response) {
   try {
@@ -16,39 +16,43 @@ export async function authControllerLogin(req: Request, res: Response) {
       });
     }
     const { email, password } = parsedUser.data;
-    const user = await User.findOne({ email });
+    const user = await prisma.user.findUnique({ where: { email } });
 
     // did this to prevent timing attacks
     const hashToCompareAgainst =
-      user && user.provider === "local" && user.password
-        ? user.password
-        : DUMMY_PASSWORD_HASH;
-
+      user && user.password ? user.password : DUMMY_PASSWORD_HASH;
     const isPasswordCorrect = await comparePassword(
       password,
       hashToCompareAgainst,
     );
 
     if (!isPasswordCorrect) {
-      if (user && user.provider === "local" && user.password) {
-        user.failedLoginAttempts = (user.failedLoginAttempts || 0) + 1;
-        if (user.failedLoginAttempts >= 5) {
-          user.lockUntil = new Date(Date.now() + 15 * 60 * 1000);
-        }
-        await user.save();
+      if (user && user.password) {
+        const failedLoginAttempts = (user.failedLoginAttempts || 0) + 1;
+        await prisma.user.update({
+          where: { id: user.id },
+          data: {
+            failedLoginAttempts,
+            lockUntil:
+              failedLoginAttempts >= 5
+                ? new Date(Date.now() + 15 * 60 * 1000)
+                : user.lockUntil,
+          },
+        });
       }
       return res.status(401).json({ message: "Invalid credentials" });
     }
+    if (!user) {
+      return res.status(401).json({ message: "Invalid credentials" });
+    }
 
-    const authenticatedUser = user as AuthPayload;
-
-    if (!authenticatedUser.isVerified) {
+    if (!user.isVerified) {
       return res
         .status(403)
         .json({ message: "Please verify your email before logging in" });
     }
 
-    const isLocked = authenticatedUser.lockUntil;
+    const isLocked = user.lockUntil;
     if (isLocked && isLocked > new Date()) {
       return res.status(403).json({
         message:
@@ -57,12 +61,12 @@ export async function authControllerLogin(req: Request, res: Response) {
     }
 
     const payload = {
-      email: authenticatedUser.email,
-      role: authenticatedUser.role,
-      id: authenticatedUser.id,
+      email: user.email,
+      role: user.role,
+      id: user.id,
     };
 
-    if (authenticatedUser.twoFactorEnabled) {
+    if (user.twoFactorEnabled) {
       const tempToken = generateAccessToken(
         { ...payload, requiresTwoFactor: true },
         "5m",
@@ -74,12 +78,10 @@ export async function authControllerLogin(req: Request, res: Response) {
         path: "/",
         maxAge: 5 * 60 * 1000,
       });
-      return res
-        .status(200)
-        .json({
-          message: "Two Factor Reqired",
-          is2faEnabled: user?.twoFactorEnabled,
-        });
+      return res.status(200).json({
+        message: "Two Factor Reqired",
+        is2faEnabled: user.twoFactorEnabled,
+      });
     }
 
     const token = generateAccessToken(payload, "15m");
@@ -92,10 +94,23 @@ export async function authControllerLogin(req: Request, res: Response) {
     });
 
     const refreshToken = generateRefreshToken(payload, "7d");
-    authenticatedUser.failedLoginAttempts = 0;
-    authenticatedUser.lockUntil = undefined;
-    authenticatedUser.refreshToken = refreshToken;
-    await authenticatedUser.save();
+    const hashedRefreshToken = generateHashedToken(refreshToken);
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        failedLoginAttempts: 0,
+        lockUntil: null,
+      },
+    });
+
+    await prisma.refreshToken.create({
+      data: {
+        tokenHash: hashedRefreshToken,
+        userId: user.id,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      },
+    });
 
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,

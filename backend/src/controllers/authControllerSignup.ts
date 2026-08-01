@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import User from "../models/User";
+import { prisma } from "../lib/prisma";
 import { signupSchema } from "../validator/authValidator";
 import { hashPassword } from "../utils/password";
 import { sendVerificationEmail } from "../service/verificationService";
@@ -15,19 +15,21 @@ export async function authControllerSignup(req: Request, res: Response) {
     }
     const { email, password } = parsedUser.data;
 
-    const isUserExist = await User.findOne({
-      email: email,
+    const isUserExist = await prisma.user.findUnique({
+      where: { email },
     });
     if (isUserExist) {
       return res.status(409).json({
         message: "User already exist try with other email",
       });
     }
+
     const hashedPassword = await hashPassword(password);
-    const user = await User.create({
-      email: email,
-      password: hashedPassword,
-      provider: "local",
+    const user = await prisma.user.create({
+      data: {
+        email,
+        password: hashedPassword,
+      },
     });
 
     await sendVerificationEmail(user);

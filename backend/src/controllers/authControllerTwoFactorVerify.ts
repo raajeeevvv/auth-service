@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { AuthPayload } from "../types";
-import User from "../models/User";
+import { prisma } from "../lib/prisma";
 import { verify } from "otplib";
 import { twoFactorVerifyOtpSchema } from "../validator/authValidator";
 
@@ -11,16 +11,13 @@ export async function authControllerTwoFactorVerify(
   try {
     const { id } = req.user as AuthPayload;
     const parsed = twoFactorVerifyOtpSchema.safeParse(req.body);
-
     if (!parsed.success) {
       return res.status(400).json({
-        message:"OTP is required" 
+        message: "OTP is required",
       });
     }
-
     const { otp } = parsed.data;
-    const user = await User.findById(id);
-
+    const user = await prisma.user.findUnique({ where: { id } });
     if (!user) {
       return res.status(401).json({ message: "User not found" });
     }
@@ -29,19 +26,20 @@ export async function authControllerTwoFactorVerify(
         message: "2FA setup not initiated — call /twofactor/setup first",
       });
     }
-
     const result = await verify({
       secret: user.twoFactorSecret,
       token: otp,
     });
-    console.log(result)
+    console.log(result);
     if (!result.valid) {
       return res.status(401).json({
         message: "invalid OTP ",
       });
     }
-    user.twoFactorEnabled = true;
-    await user.save();
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { twoFactorEnabled: true },
+    });
     return res.status(200).json({
       message: "Two Factor Successfull",
     });

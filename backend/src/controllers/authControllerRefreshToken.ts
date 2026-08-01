@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
-import User from "../models/User";
+import { prisma } from "../lib/prisma";
 import { generateAccessToken, verifyRefreshToken } from "../utils/jwt";
+import { generateHashedToken } from "../utils/token";
 
 export async function authControllerRefreshToken(req: Request, res: Response) {
   try {
@@ -8,25 +9,30 @@ export async function authControllerRefreshToken(req: Request, res: Response) {
     if (!refreshToken) {
       return res.status(401).json({ message: "No refresh token provided" });
     }
-
     let decoded;
     try {
       decoded = verifyRefreshToken(refreshToken);
     } catch (err) {
       return res.status(401).json({ message: "Invalid refresh token" });
     }
-
     if (typeof decoded === "string") {
       return res.status(401).json({ message: "Invalid refresh token" });
     }
-
     const { id } = decoded;
-    const user = await User.findById(id);
+    const user = await prisma.user.findUnique({ where: { id } });
     if (!user) {
       return res.status(401).json({ message: "Invalid refresh token" });
     }
 
-    if (user.refreshToken !== refreshToken) {
+    const hashedIncomingToken = generateHashedToken(refreshToken);
+    const storedToken = await prisma.refreshToken.findUnique({
+      where: { tokenHash: hashedIncomingToken },
+    });
+    if (
+      !storedToken ||
+      storedToken.userId !== user.id ||
+      storedToken.expiresAt < new Date()
+    ) {
       return res.status(401).json({ message: "Invalid refresh token" });
     }
 
@@ -43,7 +49,6 @@ export async function authControllerRefreshToken(req: Request, res: Response) {
       maxAge: 15 * 60 * 1000,
       path: "/",
     });
-
     return res.status(200).json({
       message: "Token refreshed successfully",
     });

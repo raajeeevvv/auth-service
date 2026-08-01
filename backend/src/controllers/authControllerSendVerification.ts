@@ -1,7 +1,6 @@
 import { Request, Response } from "express";
 import { sendVerificationSchema } from "../validator/authValidator";
-import User from "../models/User";
-import { generateHashedToken, generateToken } from "../utils/token";
+import { prisma } from "../lib/prisma";
 import { sendVerificationEmail } from "../service/verificationService";
 
 export async function authControllerSendVerification(
@@ -17,7 +16,7 @@ export async function authControllerSendVerification(
     }
 
     const { email } = parsedResult.data;
-    const user = await User.findOne({ email });
+    const user = await prisma.user.findUnique({ where: { email } });
     if (!user) {
       return res.status(200).json({
         message: "If that email exists, a verify link has been sent.",
@@ -29,7 +28,7 @@ export async function authControllerSendVerification(
       });
     }
 
-    await sendVerificationEmail(user); 
+    await sendVerificationEmail(user);
 
     return res.status(200).json({
       message: "If that email exists, a verify link has been sent.",

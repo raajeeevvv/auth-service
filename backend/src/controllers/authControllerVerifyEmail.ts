@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { verifyEmailSchema } from "../validator/authValidator";
-import User from "../models/User";
+import { prisma } from "../lib/prisma";
 import { generateHashedToken } from "../utils/token";
 
 export async function authControllerVerifyEmail(req: Request, res: Response) {
@@ -14,23 +14,25 @@ export async function authControllerVerifyEmail(req: Request, res: Response) {
     const { token } = parsedResult.data;
     //hash the token
     const tokenHash = generateHashedToken(token);
-
-    const user = await User.findOne({
-      verifyEmailTokenHash: tokenHash,
-      verifyEmailExpires: { $gt: new Date() },
+    const user = await prisma.user.findFirst({
+      where: {
+        verifyEmailTokenHash: tokenHash,
+        verifyEmailExpires: { gt: new Date() },
+      },
     });
-
     if (!user) {
       return res.status(400).json({
         message: "Invalid or expired token",
       });
     }
-
-    user.isVerified = true;
-    user.verifyEmailExpires = undefined;
-    user.verifyEmailTokenHash = undefined;
-    await user.save();
-
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        isVerified: true,
+        verifyEmailExpires: null,
+        verifyEmailTokenHash: null,
+      },
+    });
     return res.status(200).json({
       message: "Email Verified Successfully",
     });

@@ -3,8 +3,7 @@ import cors from "cors";
 import authRoutes from "./routes/authRoutes";
 import cookieParser from "cookie-parser";
 import { authMiddleware } from "./middleware/authMiddleware";
-import passport from "./config/passport";
-
+import passport from "./lib/passport";
 
 const app = express();
 
