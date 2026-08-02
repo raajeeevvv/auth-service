@@ -1,8 +1,14 @@
 import request from "supertest";
-import { jest, describe, expect, it, beforeAll, afterAll } from "@jest/globals";
-import { MongoMemoryServer } from "mongodb-memory-server";
-import mongoose from "mongoose";
+import {
+  jest,
+  describe,
+  expect,
+  it,
+  afterAll,
+  afterEach,
+} from "@jest/globals";
 import app from "../app";
+import { prisma } from "../lib/prisma";
 
 jest.mock("otplib", () => ({
   authenticator: {
@@ -11,19 +17,12 @@ jest.mock("otplib", () => ({
   },
 }));
 
-let mongoServer: MongoMemoryServer;
-
-// runs ONCE before all tests in this file
-beforeAll(async () => {
-  mongoServer = await MongoMemoryServer.create();
-  const uri = mongoServer.getUri();
-  await mongoose.connect(uri);
+afterEach(async () => {
+  await prisma.user.deleteMany({});
 });
 
-// runs ONCE after all tests in this file — cleanup so that mongo instance don't become a zomie
 afterAll(async () => {
-  await mongoose.disconnect();
-  await mongoServer.stop();
+  await prisma.$disconnect();
 });
 
 describe("Dummy sanity test", () => {

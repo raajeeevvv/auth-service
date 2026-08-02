@@ -1,7 +1,5 @@
 import request from "supertest";
-import { MongoMemoryServer } from "mongodb-memory-server";
 import {
-  beforeAll,
   afterAll,
   afterEach,
   describe,
@@ -9,13 +7,10 @@ import {
   expect,
   jest,
 } from "@jest/globals";
-import mongoose from "mongoose";
 import app from "../app";
-import User from "../models/User";
+import { prisma } from "../lib/prisma";
 import { hashPassword } from "../utils/password";
 import { createDummyUser } from "./helper/createDummyUser";
-
-let mongoServer: MongoMemoryServer;
 
 jest.mock("otplib", () => ({
   authenticator: {
@@ -24,28 +19,23 @@ jest.mock("otplib", () => ({
   },
 }));
 
-beforeAll(async () => {
-  mongoServer = await MongoMemoryServer.create();
-  await mongoose.connect(mongoServer.getUri());
-});
-
 afterEach(async () => {
-  await User.deleteMany({});
+  await prisma.user.deleteMany({}); // cascades to RefreshToken/OAuthAccount via onDelete: Cascade
 });
 
 afterAll(async () => {
-  await mongoose.disconnect();
-  await mongoServer.stop();
+  await prisma.$disconnect();
 });
 
-describe("POST /signup", () => {
+describe("POST /login", () => {
   it("should return status code 200 and add access & refress token to cookie", async () => {
     const hashedPassword = await hashPassword("thisispassword");
-    await User.create({
-      email: "test@test.com",
-      password: hashedPassword,
-      provider: "local",
-      isVerified: true,
+    await prisma.user.create({
+      data: {
+        email: "test@test.com",
+        password: hashedPassword,
+        isVerified: true,
+      },
     });
     const response = await request(app)
       .post("/api/auth/login")
@@ -70,11 +60,12 @@ describe("POST /signup", () => {
 
   it("should return 401 for wrong password", async () => {
     const hashedPassword = await hashPassword("thisispassword");
-    await User.create({
-      email: "test@test.com",
-      password: hashedPassword,
-      provider: "local",
-      isVerified: true,
+    await prisma.user.create({
+      data: {
+        email: "test@test.com",
+        password: hashedPassword,
+        isVerified: true,
+      },
     });
     const response = await request(app)
       .post("/api/auth/login")
@@ -103,10 +94,10 @@ describe("POST /signup", () => {
         .post("/api/auth/login")
         .send({ email: user.email, password: "wrong-password" });
     }
-    const userFromDb = await User.findById(user.id);
+    const userFromDb = await prisma.user.findUnique({ where: { id: user.id } });
     const failedLoginAttempts = userFromDb?.failedLoginAttempts;
     expect(failedLoginAttempts).toBe(5);
-    expect(userFromDb?.lockUntil).toBeDefined();
+    expect(userFromDb?.lockUntil).not.toBeNull();
 
     const response = await request(app)
       .post("/api/auth/login")
@@ -116,6 +107,7 @@ describe("POST /signup", () => {
       "Account is locked due to multiple failed login attempts. Please try again later.",
     );
   });
+
   it("should reset failedLogoutAttempt count to 0 after successfull login", async () => {
     const user = await createDummyUser({
       password: "thisispass",
@@ -126,17 +118,17 @@ describe("POST /signup", () => {
         .post("/api/auth/login")
         .send({ email: user.email, password: "wrong-password" });
     }
-    const userFromDb = await User.findById(user.id);
+    const userFromDb = await prisma.user.findUnique({ where: { id: user.id } });
     const failedLoginAttempts = userFromDb?.failedLoginAttempts;
     expect(failedLoginAttempts).toBe(3);
-    expect(userFromDb?.lockUntil).toBeUndefined();
+    expect(userFromDb?.lockUntil).toBeNull();
 
     const response = await request(app)
       .post("/api/auth/login")
       .send({ email: user.email, password: "thisispass" });
-    const userFromDbAgain = await User.findById(user.id);
+    const userFromDbAgain = await prisma.user.findUnique({ where: { id: user.id } });
     expect(userFromDbAgain?.failedLoginAttempts).toBe(0);
-    expect(userFromDbAgain?.lockUntil).toBeUndefined();
+    expect(userFromDbAgain?.lockUntil).toBeNull();
     expect(response.status).toBe(200);
     expect(response.body.message).toBe("User logged in successfully");
   });

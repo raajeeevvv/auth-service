@@ -3,19 +3,13 @@ import {
   describe,
   it,
   expect,
-  beforeAll,
-  afterAll,
   afterEach,
+  afterAll,
   jest,
 } from "@jest/globals";
-import { MongoMemoryServer } from "mongodb-memory-server";
-import mongoose from "mongoose";
+import { prisma } from "../lib/prisma";
 import app from "../app";
-import User from "../models/User";
-import { hashPassword } from "../utils/password";
 import { createDummyUser } from "./helper/createDummyUser";
-
-let mongoServer: MongoMemoryServer;
 
 jest.mock("otplib", () => ({
   authenticator: {
@@ -24,18 +18,12 @@ jest.mock("otplib", () => ({
   },
 }));
 
-beforeAll(async () => {
-  mongoServer = await MongoMemoryServer.create();
-  await mongoose.connect(mongoServer.getUri());
-});
-
 afterEach(async () => {
-  await User.deleteMany({});
+  await prisma.user.deleteMany({}); // cascades to RefreshToken/OAuthAccount via onDelete: Cascade
 });
 
 afterAll(async () => {
-  await mongoose.disconnect();
-  await mongoServer.stop();
+  await prisma.$disconnect();
 });
 
 describe("authMiddleware", () => {
@@ -53,8 +41,8 @@ describe("authMiddleware", () => {
     expect(response.body.message).toBe("Invalid or expired token");
   });
 
-  it("should return 200 with a valid token", async () => { 
-    await createDummyUser()
+  it("should return 200 with a valid token", async () => {
+    await createDummyUser({});
 
     const loginResponse = await request(app)
       .post("/api/auth/login")

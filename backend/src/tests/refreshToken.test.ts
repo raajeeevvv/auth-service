@@ -3,19 +3,13 @@ import {
   describe,
   it,
   expect,
-  beforeAll,
-  afterAll,
   afterEach,
+  afterAll,
   jest,
 } from "@jest/globals";
-import { MongoMemoryServer } from "mongodb-memory-server";
-import mongoose from "mongoose";
 import app from "../app";
-import User from "../models/User";
-import { hashPassword } from "../utils/password";
+import { prisma } from "../lib/prisma";
 import { createDummyUser } from "./helper/createDummyUser";
-
-let mongoServer: MongoMemoryServer;
 
 jest.mock("otplib", () => ({
   authenticator: {
@@ -24,18 +18,12 @@ jest.mock("otplib", () => ({
   },
 }));
 
-beforeAll(async () => {
-  mongoServer = await MongoMemoryServer.create();
-  await mongoose.connect(mongoServer.getUri());
-});
-
 afterEach(async () => {
-  await User.deleteMany({});
+  await prisma.user.deleteMany({});
 });
 
 afterAll(async () => {
-  await mongoose.disconnect();
-  await mongoServer.stop();
+  await prisma.$disconnect();
 });
 
 describe("Logout", () => {
@@ -49,52 +37,36 @@ describe("Logout", () => {
     const response = await request(app)
       .post("/api/auth/refresh")
       .set("Cookie", ["refreshToken=invalid-token"]);
-
     expect(response.status).toBe(401);
     expect(response.body.message).toBe("Invalid refresh token");
   });
-  it("should return 200 and a new access token cookie for a valid refresh token", async () => {
-    await createDummyUser();
 
+  it("should return 200 and a new access token cookie for a valid refresh token", async () => {
+    await createDummyUser({});
     const loginResponse = await request(app)
       .post("/api/auth/login")
       .send({ email: "test@test.com", password: "thisispassword" });
-
-    const loginCookies = loginResponse.header[
-      "set-cookie"
-    ] as unknown as string[];
-
+    const loginCookies = loginResponse.header["set-cookie"] as unknown as string[];
     const response = await request(app)
       .post("/api/auth/refresh")
       .set("Cookie", loginCookies);
-
     expect(response.status).toBe(200);
     expect(response.body.message).toBe("Token refreshed successfully");
-
     const newCookies = response.header["set-cookie"] as unknown as string[];
     const newAccessTokenCookie = newCookies.find((c) => c.startsWith("token="));
     expect(newAccessTokenCookie).toBeDefined();
   });
 
   it("should return 401 when using a refresh token that was revoked by logout", async () => {
-    await createDummyUser();
-
+    await createDummyUser({});
     const loginResponse = await request(app)
       .post("/api/auth/login")
       .send({ email: "test@test.com", password: "thisispassword" });
-
-    const loginCookies = loginResponse.header[
-      "set-cookie"
-    ] as unknown as string[];
-
-    //logout to remove refresh token from DB
+    const loginCookies = loginResponse.header["set-cookie"] as unknown as string[];
     await request(app).post("/api/auth/logout").set("Cookie", loginCookies);
-
-    // attemp to resuse the OLD refresh token cookie
     const response = await request(app)
       .post("/api/auth/refresh")
       .set("Cookie", loginCookies);
-
     expect(response.status).toBe(401);
     expect(response.body.message).toBe("Invalid refresh token");
   });

@@ -8,14 +8,10 @@ import {
   afterEach,
   jest,
 } from "@jest/globals";
-import { MongoMemoryServer } from "mongodb-memory-server";
-import mongoose from "mongoose";
 import app from "../app";
-import User from "../models/User";
 import { createDummyUser } from "./helper/createDummyUser";
 import { generateHashedToken } from "../utils/token";
-
-let mongoServer: MongoMemoryServer;
+import { prisma } from "../lib/prisma";
 
 jest.mock("otplib", () => ({
   authenticator: {
@@ -24,18 +20,12 @@ jest.mock("otplib", () => ({
   },
 }));
 
-beforeAll(async () => {
-  mongoServer = await MongoMemoryServer.create();
-  await mongoose.connect(mongoServer.getUri());
-});
-
 afterEach(async () => {
-  await User.deleteMany({});
+  await prisma.user.deleteMany({});
 });
 
 afterAll(async () => {
-  await mongoose.disconnect();
-  await mongoServer.stop();
+  await prisma.$disconnect();
 });
 
 describe("Verify Email", () => {
@@ -83,9 +73,9 @@ describe("Verify Email", () => {
 
     expect(response.status).toBe(400);
 
-    const userFromDb = await User.findById(user.id);
-    expect(userFromDb?.verifyEmailTokenHash).toBeUndefined();
-    expect(userFromDb?.verifyEmailExpires).toBeUndefined();
+    const userFromDb = await prisma.user.findUnique({ where: { id: user.id } });
+    expect(userFromDb?.verifyEmailTokenHash).toBeNull();
+    expect(userFromDb?.verifyEmailExpires).toBeNull();
   });
 
   it("should return 200 for verification successfully", async () => {
@@ -103,10 +93,10 @@ describe("Verify Email", () => {
     expect(response.status).toBe(200);
     expect(response.body.message).toBe("Email Verified Successfully");
 
-    const userFromDb = await User.findById(user.id);
+    const userFromDb = await prisma.user.findUnique({ where: { id: user.id } });
     expect(userFromDb?.isVerified).toBe(true);
-    expect(userFromDb?.verifyEmailTokenHash).toBeUndefined();
-    expect(userFromDb?.verifyEmailExpires).toBeUndefined();
+    expect(userFromDb?.verifyEmailTokenHash).toBeNull();
+    expect(userFromDb?.verifyEmailExpires).toBeNull();
     console.log(process.env.NODE_ENV);
   });
 });

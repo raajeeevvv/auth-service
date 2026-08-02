@@ -3,15 +3,12 @@ import {
   describe,
   it,
   expect,
-  beforeAll,
-  afterAll,
   afterEach,
+  afterAll,
   jest,
 } from "@jest/globals";
-import { MongoMemoryServer } from "mongodb-memory-server";
-import mongoose from "mongoose";
+import { prisma } from "../lib/prisma";
 import app from "../app";
-import User from "../models/User";
 import { createDummyUser } from "./helper/createDummyUser";
 import { verify } from "otplib";
 
@@ -21,21 +18,13 @@ jest.mock("otplib", () => ({
   verify: jest.fn(),
 }));
 
-let mongoServer: MongoMemoryServer;
-
-beforeAll(async () => {
-  mongoServer = await MongoMemoryServer.create();
-  await mongoose.connect(mongoServer.getUri());
-});
-
 afterEach(async () => {
-  await User.deleteMany({});
+  await prisma.user.deleteMany({}); // cascades to RefreshToken/OAuthAccount via onDelete: Cascade
   jest.clearAllMocks();
 });
 
 afterAll(async () => {
-  await mongoose.disconnect();
-  await mongoServer.stop();
+  await prisma.$disconnect();
 });
 
 describe("POST /twofactor/verify", () => {
@@ -59,6 +48,7 @@ describe("POST /twofactor/verify", () => {
     expect(response.status).toBe(400);
     expect(response.body.message).toBe("OTP is required");
   });
+
   it("should return 400 when no token provided", async () => {
     const response = await request(app)
       .post("/api/auth/twofactor/login")
@@ -67,6 +57,7 @@ describe("POST /twofactor/verify", () => {
     expect(response.status).toBe(400);
     expect(response.body.message).toBe("Token not found, Retry login again");
   });
+
   it("should return 400 and message 2FA setup not initiated — call /twofactor/setup first", async () => {
     const user = await createDummyUser({
       twoFactorEnabled: true,
@@ -88,6 +79,7 @@ describe("POST /twofactor/verify", () => {
       "2FA setup not initiated — call /twofactor/setup first",
     );
   });
+
   it("should return 401 for an invalid OTP", async () => {
     const user = await createDummyUser({
       twoFactorEnabled: true,
@@ -100,9 +92,10 @@ describe("POST /twofactor/verify", () => {
 
     const cookies = loginResponse.header["set-cookie"] as unknown as string[];
 
-    const userFromDb = await User.findById(user.id);
-    userFromDb!.twoFactorSecret = "FAKESECRET123";
-    await userFromDb!.save();
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { twoFactorSecret: "FAKESECRET123" },
+    });
 
     jest.mocked(verify).mockResolvedValue({ valid: false });
 
@@ -114,6 +107,7 @@ describe("POST /twofactor/verify", () => {
     expect(response.status).toBe(401);
     expect(response.body.message).toBe("invalid OTP ");
   });
+
   it("should return 200 and message of successful login", async () => {
     const user = await createDummyUser({
       twoFactorEnabled: true,
@@ -126,9 +120,10 @@ describe("POST /twofactor/verify", () => {
 
     const cookies = loginResponse.header["set-cookie"] as unknown as string[];
 
-    const userFromDb = await User.findById(user.id);
-    userFromDb!.twoFactorSecret = "FAKESECRET123";
-    await userFromDb!.save();
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { twoFactorSecret: "FAKESECRET123" },
+    });
 
     jest.mocked(verify).mockResolvedValue({ valid: true, delta: 0 });
 
@@ -149,7 +144,9 @@ describe("POST /twofactor/verify", () => {
     expect(refreshToken).toBeDefined();
     expect(tempToken).toMatch(/Expires=Thu, 01 Jan 1970/);
 
-    const updatedUser = await User.findById(user.id);
-    expect(updatedUser?.refreshToken).toBeDefined();
+    const storedRefreshToken = await prisma.refreshToken.findFirst({
+      where: { userId: user.id },
+    });
+    expect(storedRefreshToken).not.toBeNull();
   });
 });

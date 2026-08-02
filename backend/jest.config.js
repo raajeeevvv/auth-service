@@ -9,6 +9,6 @@ module.exports = {
     ...tsJestTransformCfg,
     "^.+\\.[tj]sx?$": "ts-jest",
   },
-  transformIgnorePatterns: ["node_modules/(?!(@scure|otplib)/)"],
+  transformIgnorePatterns: ["node_modules/(?!(@scure|otplib)/)","/dist/"],
   setupFiles: ["<rootDir>/jest.setup.ts"], // .env.test setup here
 };
