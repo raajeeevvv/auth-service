@@ -6,7 +6,7 @@
     "dev": "tsx watch src/server.ts",
     "build": "npx tsc -b",
     "start": "node dist/server.js",
-     "test": "jest --runInBand"
+    "test": "jest --runInBand"
   },
   "author": "",
   "license": "ISC",
@@ -21,6 +21,7 @@
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "express-rate-limit": "^8.5.2",
+    "ioredis": "^6.0.0",
     "jsonwebtoken": "^9.0.3",
     "otplib": "^13.4.1",
     "passport": "^0.7.0",
