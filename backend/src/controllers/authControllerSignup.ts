@@ -7,6 +7,7 @@ import { sendVerificationEmail } from "../service/verificationService";
 export async function authControllerSignup(req: Request, res: Response) {
   try {
     const parsedUser = signupSchema.safeParse(req.body);
+
     if (!parsedUser.success) {
       return res.status(400).json({
         message: "Invalid input",
@@ -23,7 +24,6 @@ export async function authControllerSignup(req: Request, res: Response) {
         message: "User already exist try with other email",
       });
     }
-
     const hashedPassword = await hashPassword(password);
     const user = await prisma.user.create({
       data: {
