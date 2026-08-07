@@ -3,12 +3,13 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
+    "postinstall": "prisma generate",
     "dev": "tsx watch src/server.ts",
     "build": "npx tsc -b",
     "start": "node dist/server.js",
     "test": "jest --runInBand",
     "worker": "tsx watch src/worker.ts"
-  },
+},
   "author": "",
   "license": "ISC",
   "description": "",
