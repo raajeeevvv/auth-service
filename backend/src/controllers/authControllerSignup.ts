@@ -2,12 +2,12 @@ import { Request, Response } from "express";
 import { prisma } from "../lib/prisma";
 import { signupSchema } from "../validator/authValidator";
 import { hashPassword } from "../utils/password";
-import { sendVerificationEmail } from "../service/verificationService";
+import { createVerificationToken } from "../service/verificationService";
+import { emailQueue } from "../queue/email.queue";
 
 export async function authControllerSignup(req: Request, res: Response) {
   try {
     const parsedUser = signupSchema.safeParse(req.body);
-
     if (!parsedUser.success) {
       return res.status(400).json({
         message: "Invalid input",
@@ -15,7 +15,6 @@ export async function authControllerSignup(req: Request, res: Response) {
       });
     }
     const { email, password } = parsedUser.data;
-
     const isUserExist = await prisma.user.findUnique({
       where: { email },
     });
@@ -32,7 +31,12 @@ export async function authControllerSignup(req: Request, res: Response) {
       },
     });
 
-    await sendVerificationEmail(user);
+    const rawToken = await createVerificationToken(user);
+    await emailQueue.add("send-verification-email", {
+      email: user.email,
+      link: `http://localhost:5173/verify-email?token=${rawToken}`,
+    });
+
     return res.status(201).json({
       message: "Email verification link has been sended to you email",
     });

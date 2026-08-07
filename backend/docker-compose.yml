@@ -11,11 +11,39 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+
   redis:
     image: redis:alpine
     container_name: auth-service-redis
     ports:
       - "6379:6379"
+
+  app:
+    build: .
+    container_name: auth-service-app
+    restart: always
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://authservice:devpassword@postgres:5432/authservice_dev
+      REDIS_URL: redis://redis:6379
+    ports:
+      - "3000:3000"
+    depends_on:
+      - postgres
+      - redis
+
+  worker:
+    build: .
+    container_name: auth-service-worker
+    restart: always
+    command: ["node", "dist/worker.js"]
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://authservice:devpassword@postgres:5432/authservice_dev
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      - postgres
+      - redis
 
 volumes:
   pgdata:
